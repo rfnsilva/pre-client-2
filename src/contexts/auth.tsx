@@ -42,7 +42,7 @@ interface AuthContextData {
   updateUser(user: IUser, id: string): Promise<void>
   signOut(): Promise<void>
   uploadImage(file: File, id: string): Promise<void>
-  // updateLocalization(address: IAddress, id: string): Promise<void>
+  updateLocalization(address: IAddress, id: string): Promise<void>
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData)
@@ -113,13 +113,9 @@ export const AuthProvider: React.FC = ({ children }) => {
   }
 
   async function updateEmail(email: string, id: string) {
-    const response = await Api.put(
-      `/updateUser/${id}`,
-      { email: email },
-      {
-        headers: { Authorization: `bearer ${token}` }
-      }
-    )
+    const response = await Api.put(`/updateUser/${id}`, email, {
+      headers: { Authorization: `bearer ${token}` }
+    })
 
     setUser(response.data)
     localStorage.setItem('user', JSON.stringify(response.data))
@@ -144,15 +140,13 @@ export const AuthProvider: React.FC = ({ children }) => {
         .child(file.name)
         .getDownloadURL()
         .then(async (url: string) => {
-          const response = await Api.put(
+          await Api.put(
             `/updateUser/${id}`,
             { image: url },
             {
               headers: { Authorization: `bearer ${token}` }
             }
           )
-
-          console.log(response.data)
 
           setUser({
             ...user,
@@ -166,20 +160,28 @@ export const AuthProvider: React.FC = ({ children }) => {
     })
   }
 
-  // async function updateLocalization(address: IAddress, id: string) {
-  //   await db.collection('user').doc(id).update({
-  //     address: address
-  //   })
+  async function updateLocalization(address: IAddress, id: string) {
+    // update no mongodb
+    const response = await Api.put(
+      `/updateUser/${id}`,
+      { address: address },
+      {
+        headers: { Authorization: `bearer ${token}` }
+      }
+    )
 
-  //   setUser({
-  //     ...user,
-  //     address: address
-  //   })
+    setUser(response.data)
+    localStorage.setItem('user', JSON.stringify(response.data))
 
-  //   const userLocal = JSON.parse(localStorage.getItem('user') || '{}')
-  //   userLocal.address = address
-  //   localStorage.setItem('user', JSON.stringify(userLocal))
-  // }
+    // setUser({
+    //   ...user,
+    //   address: address
+    // })
+
+    // const userLocal = JSON.parse(localStorage.getItem('user') || '{}')
+    // userLocal.address = address
+    // localStorage.setItem('user', JSON.stringify(userLocal))
+  }
 
   return (
     <AuthContext.Provider
@@ -191,7 +193,7 @@ export const AuthProvider: React.FC = ({ children }) => {
         signIn,
         updateUser,
         updateEmail,
-        // updateLocalization,
+        updateLocalization,
         uploadImage,
         signOut
       }}

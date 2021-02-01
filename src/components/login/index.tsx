@@ -1,30 +1,47 @@
-import React, { useContext, useRef, useState } from 'react'
+import React, { useContext, useRef } from 'react'
 import { useHistory } from 'react-router-dom'
+import { Form } from '@unform/web'
+import { SubmitHandler, FormHandles } from '@unform/core'
+import * as Yup from 'yup'
 
 import AuthContext from '../../contexts/auth'
 
-import { validadEmail, validadPassword } from '../../services/validations'
+import Input from '../input'
 
 import { Container } from './styles'
+interface IData {
+  email: string
+  password: string
+}
+
+interface IErrors {
+  [index: string]: string
+}
 
 const login: React.FC = () => {
-  const inputEmail = useRef<HTMLInputElement>(null)
-  const inputPass = useRef<HTMLInputElement>(null)
   const { signIn } = useContext(AuthContext)
-  const [error, setError] = useState({
-    emailError: '',
-    passError: ''
-  })
+  const formRef = useRef<FormHandles>(null)
 
   const history = useHistory()
 
   // subimit form
-  const SubmitForm = async () => {
-    if (error.emailError === '') {
-      const response = await signIn(
-        inputEmail?.current?.value,
-        inputPass?.current?.value
-      )
+  const handleSubmit: SubmitHandler<IData> = async data => {
+    try {
+      if (formRef.current) {
+        formRef.current.setErrors({})
+      }
+
+      const schema = Yup.object().shape({
+        email: Yup.string().email().required('email é obrigatorio !'),
+        password: Yup.string().min(6).required('minimo de 6 digitos !')
+      })
+
+      await schema.validate(data, {
+        abortEarly: false
+      })
+
+      // Validation passed
+      const response = await signIn(data.email, data.password)
 
       if (response !== undefined) {
         // redirecionar
@@ -32,25 +49,19 @@ const login: React.FC = () => {
       } else {
         alert('erro ao realizar login')
       }
+    } catch (err) {
+      const validationErrors: IErrors = {}
+
+      if (err instanceof Yup.ValidationError && formRef.current) {
+        err.inner.forEach(error => {
+          if (error.path !== undefined) {
+            validationErrors[error.path] = error.message
+          }
+        })
+
+        formRef.current.setErrors(validationErrors)
+      }
     }
-  }
-
-  const validationEmail = (email: string) => {
-    const response = validadEmail(email)
-
-    setError({
-      ...error,
-      emailError: response.emailError
-    })
-  }
-
-  const validationPass = (password: string) => {
-    const response = validadPassword(password)
-
-    setError({
-      ...error,
-      passError: response.passError
-    })
   }
 
   const navigate = (url: string) => {
@@ -65,65 +76,35 @@ const login: React.FC = () => {
           <div id="demo" className="carousel slide" data-ride="carousel">
             <div className="carousel-inner">
               <div className="carousel-item active">
-                <div className="row">
-                  <div className="form__group field">
-                    <input
-                      type="email"
-                      className="form__field"
-                      placeholder="email"
-                      name="email"
-                      id="email"
-                      onBlur={() =>
-                        validationEmail(
-                          inputEmail.current === null
-                            ? ''
-                            : inputEmail.current.value
-                        )
-                      }
-                      ref={inputEmail}
-                    />
-                    <div className="error">{error.emailError}</div>
-                    <label htmlFor="email" className="form__label">
-                      email
-                    </label>
-                  </div>
+                <Form ref={formRef} onSubmit={handleSubmit}>
+                  <div className="row">
+                    <div className="form__group field">
+                      <Input placehoder="digite seu email" name="email" />
+                    </div>
 
-                  <div className="form__group field">
-                    <input
-                      type="password"
-                      className="form__field"
-                      placeholder="password"
-                      name="password"
-                      id="password"
-                      onBlur={() =>
-                        validationPass(
-                          inputPass.current === null
-                            ? ''
-                            : inputPass.current.value
-                        )
-                      }
-                      ref={inputPass}
-                    />
-                    <div className="error">{error.passError}</div>
-                    <label htmlFor="password" className="form__label">
-                      password
-                    </label>
-                  </div>
-
-                  <div className="css-img-button">
-                    <div className="col-6 justify-content-right">
-                      <img
-                        className="img-fluid"
-                        src="https://img.icons8.com/plasticine/100/000000/sun.png"
+                    <div className="form__group field">
+                      <Input
+                        name="password"
+                        placehoder="digite sua senha"
+                        type="password"
                       />
                     </div>
-                    <div>
-                      <button onClick={SubmitForm} className="login-btn">
-                        Login
-                      </button>
+
+                    <div className="css-img-button">
+                      <div className="col-6 justify-content-right">
+                        <img
+                          className="img-fluid"
+                          src="https://img.icons8.com/plasticine/100/000000/sun.png"
+                        />
+                      </div>
+                      <div>
+                        <button type="submit" className="login-btn">
+                          Login
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Form>
               </div>
             </div>
           </div>

@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
+import { Form } from '@unform/web'
+import { SubmitHandler, FormHandles } from '@unform/core'
+import * as Yup from 'yup'
 
 import AuthContext from '../../contexts/auth'
+
+import Input from '../input'
 
 import { Container } from './styles'
 
@@ -8,16 +13,24 @@ interface Props {
   isOpenSidebar: boolean
 }
 
+interface IData {
+  cep: string
+  city: string
+  state: string
+  number: string
+  complement: string
+  street: string
+  neighborhood: string
+}
+
+interface IErrors {
+  [index: string]: string
+}
+
 const layoutlocalization: React.FC<Props> = ({ isOpenSidebar }) => {
-  const { user } = useContext(AuthContext)
+  const { user, updateLocalization } = useContext(AuthContext)
   const [widthSidebarOpen, setWidthSidebarOpen] = useState<boolean>(false)
-  const inputCEP = useRef<HTMLInputElement>(null)
-  const inputCity = useRef<HTMLInputElement>(null)
-  const inputState = useRef<HTMLInputElement>(null)
-  const inputComplement = useRef<HTMLInputElement>(null)
-  const inputNeighborhood = useRef<HTMLInputElement>(null)
-  const inputNumber = useRef<HTMLInputElement>(null)
-  const inputStreet = useRef<HTMLInputElement>(null)
+  const formRef = useRef<FormHandles>(null)
 
   useEffect(() => {
     window.addEventListener('resize', changeWidthSidebar)
@@ -35,28 +48,41 @@ const layoutlocalization: React.FC<Props> = ({ isOpenSidebar }) => {
     }
   }
 
-  const submitAddressUpdate = async () => {
-    if (
-      user.id !== undefined &&
-      inputCEP.current &&
-      inputCity.current &&
-      inputState.current &&
-      inputComplement.current &&
-      inputNeighborhood.current &&
-      inputNumber.current &&
-      inputStreet.current
-    ) {
-      const userAddressUpdate = {
-        cep: inputCEP.current.value,
-        city: inputCity.current.value,
-        state: inputState.current.value,
-        complement: inputComplement.current.value,
-        neighborhood: inputNeighborhood.current.value,
-        number: inputNumber.current.value,
-        street: inputStreet.current.value
+  const submitAddressUpdate: SubmitHandler<IData> = async data => {
+    try {
+      if (formRef.current) {
+        formRef.current.setErrors({})
       }
 
-      // await updateLocalization(userAddressUpdate, user.id)
+      const schema = Yup.object().shape({
+        cep: Yup.number().min(6).required('cep é obrigatorio !'),
+        city: Yup.string().min(4).required('cidade é obrigatorio !'),
+        state: Yup.string().min(4).required('estado é obrigatorio !'),
+        number: Yup.number().required('numero é obrigatorio !'),
+        street: Yup.string().min(4).required('rua é obrigatorio !'),
+        neighborhood: Yup.string().required('bairro é obrigatorio !')
+      })
+
+      await schema.validate(data, {
+        abortEarly: false
+      })
+
+      // Validation passed
+      if (user.id !== undefined) {
+        await updateLocalization(data, user.id)
+      }
+    } catch (err) {
+      const validationErrors: IErrors = {}
+
+      if (err instanceof Yup.ValidationError && formRef.current) {
+        err.inner.forEach(error => {
+          if (error.path !== undefined) {
+            validationErrors[error.path] = error.message
+          }
+        })
+
+        formRef.current.setErrors(validationErrors)
+      }
     }
   }
 
@@ -71,159 +97,132 @@ const layoutlocalization: React.FC<Props> = ({ isOpenSidebar }) => {
           style={{ margin: '0' }}
         >
           <div className="card">
-            <div className="row">
-              <div className="col-sm-12 col-lg-6 col-md-6 col-12">
-                <h2 style={{ color: '#c93b59' }}>Instruções</h2>
-                <p>
-                  Preencha seus dados de Localização. Sempre os mantenha
-                  atualizado.
-                </p>
-              </div>
-              <div className="col-sm-12 col-lg-6 col-md-6 col-12">
-                <div className="form-element-component">
-                  <label className="label">
-                    CEP
-                    <strong className="stars">*</strong>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="cep"
-                    type="text"
-                    name="cep"
-                    defaultValue={
-                      user.address?.cep === null ||
-                      user.address?.cep === undefined
-                        ? ''
-                        : user.address?.cep
-                    }
-                    ref={inputCEP}
-                  />
+            <Form ref={formRef} onSubmit={submitAddressUpdate}>
+              <div className="row">
+                <div className="col-sm-12 col-lg-6 col-md-6 col-12">
+                  <h2 style={{ color: '#c93b59' }}>Instruções</h2>
+                  <p>
+                    Preencha seus dados de Localização. Sempre os mantenha
+                    atualizado.
+                  </p>
                 </div>
-                {/* <div className="error">{error.nameError}</div> */}
-                <div className="form-element-component">
-                  <label className="label">
-                    Cidade
-                    <strong className="stars">*</strong>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="nome da cidade"
-                    type="text"
-                    name="city"
-                    defaultValue={
-                      user.address?.city === null ||
-                      user.address?.city === undefined
-                        ? ''
-                        : user.address?.city
-                    }
-                    ref={inputCity}
-                  />
-                </div>
-                {/* <div className="error">{error.surnameError}</div> */}
-                <div className="form-element-component">
-                  <label className="label">
-                    Estado
-                    <strong className="stars">*</strong>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="nome do estado"
-                    type="text"
-                    name="state"
-                    defaultValue={
-                      user.address?.state === null ||
-                      user.address?.state === undefined
-                        ? ''
-                        : user.address?.state
-                    }
-                    ref={inputState}
-                  />
-                </div>
-                {/* <div className="error">{error.phoneError}</div> */}
-                <div className="form-element-component">
-                  <label className="label">
-                    Bairro
-                    <strong className="stars">*</strong>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="nome do bairro"
-                    type="text"
-                    name="neighborhood"
-                    defaultValue={
-                      user.address?.neighborhood === null ||
-                      user.address?.neighborhood === undefined
-                        ? ''
-                        : user.address?.neighborhood
-                    }
-                    ref={inputNeighborhood}
-                  />
-                </div>
-                {/* <div className="error">{error.phoneError}</div> */}
-                <div className="form-element-component">
-                  <label className="label">
-                    Endereço
-                    <strong className="stars">*</strong>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="nome da rua"
-                    type="text"
-                    name="street"
-                    defaultValue={
-                      user.address?.street === null ||
-                      user.address?.street === undefined
-                        ? ''
-                        : user.address?.street
-                    }
-                    ref={inputStreet}
-                  />
-                </div>
-                {/* <div className="error">{error.phoneError}</div> */}
-                <div className="form-element-component">
-                  <label className="label">
-                    Numero
-                    <strong className="stars">*</strong>
-                  </label>
-                  <input
-                    className="input"
-                    placeholder="numero da casa"
-                    type="text"
-                    name="number"
-                    defaultValue={
-                      user.address?.number === null ||
-                      user.address?.number === undefined
-                        ? ''
-                        : user.address?.number
-                    }
-                    ref={inputNumber}
-                  />
-                </div>
-                {/* <div className="error">{error.phoneError}</div> */}
-                <div className="form-element-component">
-                  <label className="label">Complemento</label>
-                  <input
-                    className="input"
-                    placeholder="pontos de referência"
-                    type="text"
-                    name="complement"
-                    defaultValue={
-                      user.address?.complement === null ||
-                      user.address?.complement === undefined
-                        ? ''
-                        : user.address?.complement
-                    }
-                    ref={inputComplement}
-                  />
+                <div className="col-sm-12 col-lg-6 col-md-6 col-12">
+                  <div className="form-element-component">
+                    <label className="label">
+                      CEP
+                      <strong className="stars">*</strong>
+                    </label>
+                    <Input
+                      name="cep"
+                      placehoder="cep"
+                      defaultValue={
+                        user.address?.cep === null ||
+                        user.address?.cep === undefined
+                          ? ''
+                          : user.address.cep
+                      }
+                    />
+                  </div>
+                  <div className="form-element-component">
+                    <label className="label">
+                      Cidade
+                      <strong className="stars">*</strong>
+                    </label>
+                    <Input
+                      name="city"
+                      placehoder="nome da cidade"
+                      defaultValue={
+                        user.address?.city === null ||
+                        user.address?.city === undefined
+                          ? ''
+                          : user.address.city
+                      }
+                    />
+                  </div>
+                  <div className="form-element-component">
+                    <label className="label">
+                      Estado
+                      <strong className="stars">*</strong>
+                    </label>
+                    <Input
+                      name="state"
+                      placehoder="nome do estado"
+                      defaultValue={
+                        user.address?.state === null ||
+                        user.address?.state === undefined
+                          ? ''
+                          : user.address.state
+                      }
+                    />
+                  </div>
+                  <div className="form-element-component">
+                    <label className="label">
+                      Bairro
+                      <strong className="stars">*</strong>
+                    </label>
+                    <Input
+                      name="neighborhood"
+                      placehoder="nome do bairro"
+                      defaultValue={
+                        user.address?.neighborhood === null ||
+                        user.address?.neighborhood === undefined
+                          ? ''
+                          : user.address.neighborhood
+                      }
+                    />
+                  </div>
+                  <div className="form-element-component">
+                    <label className="label">
+                      Endereço
+                      <strong className="stars">*</strong>
+                    </label>
+                    <Input
+                      name="street"
+                      placehoder="nome da rua"
+                      defaultValue={
+                        user.address?.street === null ||
+                        user.address?.street === undefined
+                          ? ''
+                          : user.address.street
+                      }
+                    />
+                  </div>
+                  <div className="form-element-component">
+                    <label className="label">
+                      Numero
+                      <strong className="stars">*</strong>
+                    </label>
+                    <Input
+                      name="number"
+                      placehoder="nome da casa"
+                      defaultValue={
+                        user.address?.number === null ||
+                        user.address?.number === undefined
+                          ? ''
+                          : user.address.number
+                      }
+                    />
+                  </div>
+                  <div className="form-element-component">
+                    <label className="label">Complemento</label>
+                    <Input
+                      name="complement"
+                      placehoder="ponto de referência"
+                      defaultValue={
+                        user.address?.complement === null ||
+                        user.address?.complement === undefined
+                          ? ''
+                          : user.address.complement
+                      }
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="col-lg-10 p-3 d-flex justify-content-center sendButton">
-            <button type="button" onClick={submitAddressUpdate}>
-              Enviar
-            </button>
+              <div className="col-lg-12 p-3 d-flex justify-content-center sendButton">
+                <button type="submit">Enviar</button>
+              </div>
+            </Form>
           </div>
         </div>
       </div>
