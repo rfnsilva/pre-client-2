@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react'
 
 import Api from '../config/api'
+import { storage } from '../config/firebase'
 
 interface IAddress {
   cep?: string
@@ -37,10 +38,10 @@ interface AuthContextData {
     email: string | undefined,
     password: string | undefined
   ): Promise<IUser | undefined>
-  // updateEmail(email: string, id: string): Promise<void>
+  updateEmail(email: string, id: string): Promise<void>
   updateUser(user: IUser, id: string): Promise<void>
   signOut(): Promise<void>
-  // uploadImage(file: File, id: string): Promise<void>
+  uploadImage(file: File, id: string): Promise<void>
   // updateLocalization(address: IAddress, id: string): Promise<void>
 }
 
@@ -111,28 +112,18 @@ export const AuthProvider: React.FC = ({ children }) => {
     localStorage.clear()
   }
 
-  // async function updateEmail(email: string, id: string) {
-  //   const userCurrent = auth.currentUser
+  async function updateEmail(email: string, id: string) {
+    const response = await Api.put(
+      `/updateUser/${id}`,
+      { email: email },
+      {
+        headers: { Authorization: `bearer ${token}` }
+      }
+    )
 
-  //   userCurrent?.updateEmail(email)
-
-  //   await db.collection('user').doc(id).update({
-  //     email: email
-  //   })
-
-  //   // pega no firestore
-  //   const { docs } = await db
-  //     .collection('user')
-  //     .where('email', '==', email)
-  //     .limit(1)
-  //     .get()
-
-  //   const userDb = docs[0].data()
-  //   userDb.id = docs[0].id
-
-  //   setUser(userDb)
-  //   localStorage.setItem('user', JSON.stringify(userDb))
-  // }
+    setUser(response.data)
+    localStorage.setItem('user', JSON.stringify(response.data))
+  }
 
   async function updateUser(user: IUser, id: string) {
     // update no mongodb
@@ -140,34 +131,40 @@ export const AuthProvider: React.FC = ({ children }) => {
       headers: { Authorization: `bearer ${token}` }
     })
 
-    setUser(response.data.user)
-    localStorage.setItem('user', JSON.stringify(response.data.user))
+    setUser(response.data)
+    localStorage.setItem('user', JSON.stringify(response.data))
   }
 
-  // async function uploadImage(file: File, id: string) {
-  //   const uploadTask = storage.ref(`/images/${file.name}`).put(file)
+  async function uploadImage(file: File, id: string) {
+    const uploadTask = storage.ref(`/images/${file.name}`).put(file)
 
-  //   uploadTask.on('state_changed', console.log, console.error, () => {
-  //     storage
-  //       .ref('images')
-  //       .child(file.name)
-  //       .getDownloadURL()
-  //       .then(async (url: string) => {
-  //         await db.collection('user').doc(id).update({
-  //           image: url
-  //         })
+    uploadTask.on('state_changed', console.log, console.error, () => {
+      storage
+        .ref('images')
+        .child(file.name)
+        .getDownloadURL()
+        .then(async (url: string) => {
+          const response = await Api.put(
+            `/updateUser/${id}`,
+            { image: url },
+            {
+              headers: { Authorization: `bearer ${token}` }
+            }
+          )
 
-  //         setUser({
-  //           ...user,
-  //           image: url
-  //         })
+          console.log(response.data)
 
-  //         const userLocal = JSON.parse(localStorage.getItem('user') || '{}')
-  //         userLocal.image = url
-  //         localStorage.setItem('user', JSON.stringify(userLocal))
-  //       })
-  //   })
-  // }
+          setUser({
+            ...user,
+            image: url
+          })
+
+          const userLocal = JSON.parse(localStorage.getItem('user') || '{}')
+          userLocal.image = url
+          localStorage.setItem('user', JSON.stringify(userLocal))
+        })
+    })
+  }
 
   // async function updateLocalization(address: IAddress, id: string) {
   //   await db.collection('user').doc(id).update({
@@ -192,10 +189,10 @@ export const AuthProvider: React.FC = ({ children }) => {
         signed: !!user,
         signUp,
         signIn,
-        // updateEmail,
         updateUser,
+        updateEmail,
         // updateLocalization,
-        // uploadImage,
+        uploadImage,
         signOut
       }}
     >

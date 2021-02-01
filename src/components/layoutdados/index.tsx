@@ -16,7 +16,7 @@ interface Props {
 }
 
 const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
-  const { user, updateUser } = useContext(AuthContext)
+  const { user, updateUser, uploadImage, updateEmail } = useContext(AuthContext)
   const inputEmail = useRef<HTMLInputElement>(null)
   const inputName = useRef<HTMLInputElement>(null)
   const inputSurname = useRef<HTMLInputElement>(null)
@@ -48,23 +48,23 @@ const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
     }
   }
 
-  // const submitEmailUpdate = async () => {
-  //   if (
-  //     inputEmail.current &&
-  //     user.id !== undefined &&
-  //     error.emailError === ''
-  //   ) {
-  //     await updateEmail(inputEmail.current.value, user.id)
-  //   }
-  // }
+  function handleChangeImage(e: React.ChangeEvent<HTMLInputElement>) {
+    e.preventDefault()
 
-  // function handleChangeImage(e: React.ChangeEvent<HTMLInputElement>) {
-  //   e.preventDefault()
+    if (e.target.files && user.id !== undefined) {
+      uploadImage(e.target.files[0], user.id)
+    }
+  }
 
-  //   if (e.target.files && user.id !== undefined) {
-  //     uploadImage(e.target.files[0], user.id)
-  //   }
-  // }
+  const submitEmailUpdate = async () => {
+    if (
+      inputEmail.current &&
+      user.id !== undefined &&
+      error.emailError === ''
+    ) {
+      await updateEmail(inputEmail.current.value, user.id)
+    }
+  }
 
   const submitUpdateUser = async () => {
     if (
@@ -73,7 +73,6 @@ const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
       inputBehance.current &&
       inputLinkedin.current &&
       inputSurname.current &&
-      inputEmail.current &&
       inputName.current &&
       inputPhone.current &&
       error.nameError === '' &&
@@ -82,13 +81,14 @@ const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
     ) {
       const userUpdate = {
         name: inputName.current.value,
-        email: inputEmail.current.value,
         surname: inputSurname.current.value,
         github: inputGithub.current.value,
         linkedin: inputLinkedin.current.value,
         behance: inputBehance.current.value,
         phone: inputPhone.current.value
       }
+
+      console.log(userUpdate)
 
       await updateUser(userUpdate, user.id)
     }
@@ -148,7 +148,14 @@ const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
               </div>
               <div className="col-sm-12 col-lg-6 col-md-6 col-12">
                 <div className="mx-auto mb-3 text-left">
-                  <img className="profile-img" src={user.image} />
+                  <img
+                    className="profile-img"
+                    src={
+                      user.image === '' || user.image === undefined
+                        ? 'https://via.placeholder.com/150'
+                        : user.image
+                    }
+                  />
                 </div>
                 <div>
                   <div className="input-upload">
@@ -159,7 +166,7 @@ const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
                       type="file"
                       id="input-file"
                       className="btn btn-primary"
-                      // onChange={handleChangeImage}
+                      onChange={handleChangeImage}
                       style={{ display: 'none' }}
                     />
                   </div>
@@ -204,9 +211,9 @@ const layoutdados: React.FC<Props> = ({ isOpenSidebar }) => {
                   <div className="error">{error.emailError}</div>
                 </div>
                 <button
-                  // onClick={submitEmailUpdate}
                   className="btn btn-primary"
                   type="button"
+                  onClick={submitEmailUpdate}
                 >
                   <span>Atualizar email</span>
                 </button>
